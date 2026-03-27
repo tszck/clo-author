@@ -191,7 +191,7 @@ Summary:  [2-3 sentence plain-language summary of key concerns]
 
 Continues the review cycle after the author has revised the paper.
 
-1. **Detect prior round** — glob `submission/output/<slug>_*/` sorted by timestamp; load the most recent `referee_domain.md`, `referee_methods.md`, `editorial_decision.md`
+1. **Detect prior round** — glob `submission/output/<slug>_*/` sorted by timestamp; in the most recent folder, load the most recent referee reports (`referee_domain*.md`, `referee_methods*.md`, `editorial_decision*.md`)
 2. **Skip desk review** — the paper was already accepted for review
 3. **Same referees** — reload the same dispositions and pet peeves from round 1
 4. **Referee R&R mode** — each referee receives their previous report alongside the revised manuscript:
