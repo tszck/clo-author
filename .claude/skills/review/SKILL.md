@@ -61,9 +61,9 @@ When `--from-input <query>` is provided, **do not expect a file path argument**.
 7. Create only `submission/output/<slug>_<new-timestamp>/` for the new review run.
 
 **R&R auto-detection with `--from-input`:** After resolving the input file, always glob `submission/output/<slug>_*/` sorted by timestamp. If any prior output folders exist for this slug:
-- Load the most recent `editorial_decision.md` to check the prior decision.
+- Within the most recent output folder, look for an editorial decision file in this priority order: `editorial_decision_r3.md`, `editorial_decision_r2.md`, then `editorial_decision.md`. Load the most recent matching file to check the prior decision.
 - Report to the user: "I found a prior review of this article from `<timestamp>` (Decision: `<prior decision>`). Is this a resubmission (R&R)? If yes, I'll run in R&R mode."
-- If the user confirms R&R → proceed as `--peer --r2` (or `--r3` if round 2 already exists), loading prior referee dispositions and reports.
+- If the user confirms R&R → proceed as `--peer --r2` (or `--r3` if round 2 already exists), loading prior referee dispositions and reports and using the appropriate round suffix (`_r2`, `_r3`, etc.) when reading/writing files.
 - If the user says no → run a fresh review as if first submission.
 
 Each file in `submission/output/<slug>_<timestamp>/` must include this header:
