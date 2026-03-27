@@ -31,15 +31,15 @@ submission/
         └── ...
 ```
 
-**Slug derivation:** filename → strip extension → lowercase → spaces/underscores to hyphens → truncate to 60 chars. If the filename is generic (`paper`, `draft`, `main`), ask the user for the article title.
+**Slug derivation:** filename → strip extension → lowercase → spaces/underscores to hyphens → truncate to 60 chars. If the filename is generic (`paper`, `draft`, `main`), ask the user for the article title. If the review is invoked without an explicit file path (e.g., using `--all`), assume a default target filename of `paper/main.tex` for slug derivation.
 
 **Timestamp:** current date-time at the moment `/review` is invoked (`date +%Y-%m-%d_%H%M`).
 
 **Before running any review:**
 1. Get the timestamp: `date +%Y-%m-%d_%H%M`
-2. Derive the slug from the target filename (or ask if generic)
+2. Determine the target filename: use the explicit file path if provided; otherwise, when routing is invoked without a file (e.g., `--all`), use the default `paper/main.tex`, then derive the slug from that filename (or ask if generic).
 3. Create `submission/input/<slug>_<timestamp>/`
-4. Copy the target file into that folder
+4. Copy the target file (explicit or default) into that folder
 5. Create `submission/output/<slug>_<timestamp>/` (reports go here)
 6. Confirm to user: "Review registered: `submission/input/<slug>_<timestamp>/`"
 
