@@ -1,8 +1,8 @@
 ---
 name: review
-description: All quality reviews — routes to appropriate critics based on target file type and flags. Replaces /paper-excellence, /proofread, /econometrics-check, /review-r, /review-paper.
+description: All quality reviews — routes to appropriate critics based on target file type and flags. Replaces /paper-excellence, /proofread, /econometrics-check, /review-r, /review-paper. Also handles external PDF evaluation as if submitting to a journal.
 argument-hint: "[file path or --flag] Options: --peer [journal], --stress [journal], --methods, --proofread, --code, --replicate [lang], --all"
-allowed-tools: Read,Grep,Glob,Write,Bash,Task
+allowed-tools: Read,Grep,Glob,Write,Bash,Task,WebSearch,WebFetch
 ---
 
 # Review
@@ -13,12 +13,79 @@ Unified review command that routes to the appropriate critic agents based on the
 
 ---
 
+## Output Structure
+
+All review outputs go to `submission/` using a versioned input/output pattern:
+
+```
+submission/
+├── input/
+│   └── <slug>_YYYY-MM-DD_HHMM/
+│       └── <slug>.<ext>          ← copy of the reviewed file (PDF or source)
+└── output/
+    └── <slug>_YYYY-MM-DD_HHMM/  ← paired with same slug + timestamp
+        ├── desk_review.md
+        ├── referee_domain.md
+        ├── referee_methods.md
+        ├── editorial_decision.md
+        └── ...
+```
+
+**Slug derivation:** filename → strip extension → lowercase → spaces/underscores to hyphens → truncate to 60 chars. If the filename is generic (`paper`, `draft`, `main`), ask the user for the article title.
+
+**Timestamp:** current date-time at the moment `/review` is invoked (`date +%Y-%m-%d_%H%M`).
+
+**Before running any review:**
+1. Get the timestamp: `date +%Y-%m-%d_%H%M`
+2. Derive the slug from the target filename (or ask if generic)
+3. Create `submission/input/<slug>_<timestamp>/`
+4. Copy the target file into that folder
+5. Create `submission/output/<slug>_<timestamp>/` (reports go here)
+6. Confirm to user: "Review registered: `submission/input/<slug>_<timestamp>/`"
+
+### `--from-input <query>` flag
+
+When `--from-input <query>` is provided, **do not expect a file path argument**. Instead:
+
+1. Glob `submission/input/*/` to list all versioned input folders.
+2. Match `<query>` (partial slug, keywords, or full slug) against folder names — use fuzzy/substring matching.
+3. **If exactly one match:** confirm with the user before proceeding:
+   > Found: `submission/input/<slug>_<timestamp>/<file>`. Use this? (yes/no)
+4. **If multiple matches:** list them ranked by recency and ask the user to pick:
+   > Found multiple matches:
+   > 1. `submission/input/<slug1>_<timestamp1>/` (most recent)
+   > 2. `submission/input/<slug2>_<timestamp2>/`
+   > Which one? (enter number)
+5. **If no match:** tell the user no match was found and list what's available in `submission/input/`.
+6. Once confirmed, use the matched file as the review target. The slug is derived from the folder name (strip the `_YYYY-MM-DD_HHMM` suffix). **Do not copy the file again** — it is already in `submission/input/`.
+7. Create only `submission/output/<slug>_<new-timestamp>/` for the new review run.
+
+**R&R auto-detection with `--from-input`:** After resolving the input file, always glob `submission/output/<slug>_*/` sorted by timestamp. If any prior output folders exist for this slug:
+- Load the most recent `editorial_decision.md` to check the prior decision.
+- Report to the user: "I found a prior review of this article from `<timestamp>` (Decision: `<prior decision>`). Is this a resubmission (R&R)? If yes, I'll run in R&R mode."
+- If the user confirms R&R → proceed as `--peer --r2` (or `--r3` if round 2 already exists), loading prior referee dispositions and reports.
+- If the user says no → run a fresh review as if first submission.
+
+Each file in `submission/output/<slug>_<timestamp>/` must include this header:
+```markdown
+**File:** <slug>.<ext>
+**Submission:** <timestamp>
+**Journal:** <journal name or "Generic top-field">
+**Mode:** <flag used or auto-detected>
+**Date:** <YYYY-MM-DD>
+```
+
+**Never overwrite** a prior submission. Each run gets its own timestamp.
+
+---
+
 ## Routing Logic
 
-### Auto-detect by file type
+### Auto-detect by file type (no flag)
+- `.pdf` → **Full peer review** (`--peer`, generic calibration) + versioned intake
 - `.tex` paper file → **Comprehensive review** (writer-critic + strategist-critic + Verifier)
 - `.R`, `.py`, `.do`, `.jl` file → **Code review** (coder-critic standalone, categories 4-12)
-- `.tex` talk file (in talks/) → **Talk review** (storyteller-critic)
+- `.tex` talk file (in `talks/`) → **Talk review** (storyteller-critic)
 
 ### Explicit flags (override auto-detect)
 - `--peer [journal]` → **Full peer review** (editor desk review → referee dispatch → editorial decision)
@@ -39,7 +106,14 @@ Dispatch in parallel:
 1. **strategist-critic** — causal design audit (4 phases)
 2. **writer-critic** — manuscript polish (6 categories)
 3. **Verifier** — compilation check
+
 Compute weighted aggregate score.
+
+Save to `submission/output/<slug>_<timestamp>/`:
+- `strategy_review.md`
+- `proofread_report.md`
+- `verifier_report.md`
+- `aggregate_score.md`
 
 ### Full Peer Review (`--peer [journal]`)
 
@@ -53,7 +127,7 @@ The editor:
 2. Searches the literature via WebSearch to verify novelty claims
 3. Decides: **DESK REJECT** or **SEND TO REFEREES**
 4. If desk reject → report with reasons + suggested alternative journals. Done.
-5. If send to referees → editor selects referee dispositions and pet peeves from the journal's **Referee pool** (see .claude/references/journal-profiles.md)
+5. If send to referees → editor selects referee dispositions and pet peeves from the journal's **Referee pool** (see `.claude/references/journal-profiles.md`)
 
 #### Phase 2: Referee Reports
 The editor's referee assignment specifies for each referee:
@@ -63,7 +137,7 @@ The editor's referee assignment specifies for each referee:
 
 Dispatch **domain-referee** and **methods-referee** in parallel, each receiving:
 1. The paper manuscript
-2. The target journal name (for .claude/references/journal-profiles.md calibration)
+2. The target journal name (for `.claude/references/journal-profiles.md` calibration)
 3. Their assigned disposition and pet peeves, injected into the prompt:
 
 ```
@@ -93,19 +167,31 @@ The editor:
 4. Lists MUST address, SHOULD address, and MAY push back items
 
 #### Save Reports
-Save all outputs to `quality_reports/reviews/`:
-- `YYYY-MM-DD_desk_review.md` (Phase 1)
-- `YYYY-MM-DD_referee_domain.md` (Phase 2)
-- `YYYY-MM-DD_referee_methods.md` (Phase 2)
-- `YYYY-MM-DD_editorial_decision.md` (Phase 3)
+Save to `submission/output/<slug>_<timestamp>/`:
+- `desk_review.md`
+- `referee_domain.md`
+- `referee_methods.md`
+- `editorial_decision.md`
 
 Log the referee assignments (dispositions + pet peeves) in the editorial decision so the user can re-run with different combinations.
+
+#### Summary to User
+After all reports are saved:
+```
+## Review Complete
+
+Submission: submission/input/<slug>_<timestamp>/
+Verdict:    submission/output/<slug>_<timestamp>/
+
+Decision: [Accept / Minor Revisions / Major Revisions / Reject / Desk Reject]
+Summary:  [2-3 sentence plain-language summary of key concerns]
+```
 
 ### R&R Second Round (`--peer --r2 [journal]`)
 
 Continues the review cycle after the author has revised the paper.
 
-1. **Load prior review state** — read previous referee reports and editorial decision from `quality_reports/reviews/`
+1. **Detect prior round** — glob `submission/output/<slug>_*/` sorted by timestamp; load the most recent `referee_domain.md`, `referee_methods.md`, `editorial_decision.md`
 2. **Skip desk review** — the paper was already accepted for review
 3. **Same referees** — reload the same dispositions and pet peeves from round 1
 4. **Referee R&R mode** — each referee receives their previous report alongside the revised manuscript:
@@ -119,8 +205,10 @@ the original — improvement matters.
 
 They check whether each concern was: Resolved / Partially resolved / Not addressed. They may flag new concerns from the revisions.
 
-5. **Editor R&R decision** — Round 2 allows Accept/Minor/Major/Reject. Round 3 allows Accept/Minor/Reject only. Max 3 rounds total — editor's patience runs out, just like real life.
-6. **Save reports** with `_r2` or `_r3` suffix to `quality_reports/reviews/`
+5. **Editor R&R decision** — Round 2 allows Accept/Minor/Major/Reject. Round 3 allows Accept/Minor/Reject only. Max 3 rounds total.
+6. Save reports with `_r2` or `_r3` suffix in the new `submission/output/<slug>_<timestamp>/` folder.
+
+**Auto-detection:** If `/review` is run on a file whose slug matches an existing `submission/output/<slug>_*/` folder, prompt the user: "I found a prior review of this article. Is this a resubmission? If yes, I'll run in R&R mode."
 
 ### Hostile Stress Test (`--stress [journal]`)
 
@@ -135,7 +223,7 @@ the paper is not good enough for [journal]. The authors must convince
 you otherwise. Be specific about what would change your mind.
 ```
 
-This is for pre-submission stress testing. If the paper survives two hostile referees, it's ready.
+Save to `submission/output/<slug>_<timestamp>/` with same filenames as `--peer`.
 
 ### Code Review (`--code` or auto-detect .R/.py/.do/.jl)
 
@@ -179,9 +267,9 @@ Dispatch **coder-critic** in standalone mode.
 | Using `print()` for debugging left in production | **Minor** |
 | No package loading section at top of script | **Major** |
 
-**Do NOT edit any source files.** Only produce reports. Fixes are applied after user review, either manually or by re-dispatching the Coder agent.
+**Do NOT edit any source files.** Only produce reports.
 
-Save report to `quality_reports/[file]_code_review.md`
+Save to `submission/output/<slug>_<timestamp>/code_review.md`
 
 ### Causal Audit (`--methods`)
 
@@ -203,7 +291,7 @@ Dispatch **strategist-critic** standalone for a full 4-phase causal inference re
   - **Synthetic Control:** Pre-treatment fit, donor pool selection, no interference
   - **Event Study:** Clean identification of event timing, no confounding events, appropriate window
 - Sanity check: Are the sign, magnitude, and dynamics of the estimates plausible?
-- **EARLY STOPPING:** If Phase 2 finds CRITICAL issues, focus there instead of continuing to Phases 3-4. A broken design invalidates everything downstream.
+- **EARLY STOPPING:** If Phase 2 finds CRITICAL issues, focus there instead of continuing to Phases 3-4.
 
 **Phase 3: Inference**
 - Standard error clustering: Is the clustering level appropriate for the design?
@@ -223,19 +311,19 @@ Dispatch **strategist-critic** standalone for a full 4-phase causal inference re
 - **MAJOR ISSUES** — Significant concerns that could change conclusions
 - **CRITICAL ERRORS** — Fundamental design flaw or incorrect implementation
 
-Save report to `quality_reports/[file]_strategy_review.md`
+Save to `submission/output/<slug>_<timestamp>/causal_audit.md`
 
 ### Manuscript Polish (`--proofread`)
 Dispatch **writer-critic** standalone:
 - 6 categories: structure, claims-evidence, ID fidelity, writing, grammar, compilation
-- Save report to `quality_reports/[file]_proofread_report.md`
+- Save to `submission/output/<slug>_<timestamp>/proofread_report.md`
 
 ### Cross-Language Replication (`--replicate [language]`)
 1. Auto-detect source language from file extension
 2. Dispatch **Coder** in replication mode — re-implement in target language
 3. **coder-critic** reviews both implementations
 4. Compare numerical outputs per `.claude/references/domain-profile.md` Quality Tolerance Thresholds
-5. Save replicated script and comparison report
+5. Save replicated script and comparison report to `submission/output/<slug>_<timestamp>/`
 
 ---
 
@@ -280,6 +368,7 @@ Verifier score maps to 0 (FAIL) or 100 (PASS) for weighted aggregation.
 ---
 
 ## Principles
+- **Versioned by default.** Every review run creates a new timestamped folder. Prior reviews are never overwritten.
 - **Smart routing.** File type determines the default review mode.
 - **Flags override.** Use explicit flags for targeted reviews.
 - **Critics never edit.** All reviews produce reports only.

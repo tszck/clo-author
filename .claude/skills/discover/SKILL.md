@@ -26,6 +26,13 @@ Conduct a structured conversational interview to formalize a research idea.
 **Agents:** Direct conversation (no agent dispatch)
 **Output:** Research specification + domain profile
 
+**Before starting the interview**, check what can't be read from files:
+1. Read `CLAUDE.md` — if `[BRACKETED PLACEHOLDERS]` remain, ask: "Before we dive into the research, I need a couple of quick setup details. What's your name and institution?" and "What field is this project in?" Fill in the placeholders after the user responds.
+2. Read `.claude/references/domain-profile.md` — if still a template (contains `[e.g.,`), the field and journals are unknown. Ask the field question if not already answered above.
+3. If the user provided a topic as `$ARGUMENTS`, confirm it before starting: "You mentioned [topic] — is that the research question you want to develop, or more of a theme?"
+
+Only ask what's actually missing. If CLAUDE.md is already filled in and a research spec exists, skip directly to the interview.
+
 Interview structure:
 1. **Big Picture** (1-2 questions): "What phenomenon are you trying to understand?" "Why does this matter?"
 2. **Theoretical Motivation** (1-2 questions): "What's your intuition for why X happens?" "What would standard theory predict?"

@@ -55,7 +55,10 @@
 ├── quality_reports/             # Plans, session logs, reviews, scores
 ├── explorations/                # Research sandbox (see rules)
 ├── templates/                   # Session log, quality report templates
-└── master_supporting_docs/      # Reference papers and data docs
+├── master_supporting_docs/      # Reference papers and data docs
+└── submission/                  # Standalone article evaluation (PDF → verdict)
+    ├── input/                   # Versioned PDF submissions (<title>_YYYY-MM-DD_HHMM/)
+    └── output/                  # Paired review verdicts (same slug + timestamp)
 ```
 
 ---
@@ -97,7 +100,7 @@ See `quality.md` for weighted aggregation formula.
 | `/strategize [question]` | Identification strategy or pre-analysis plan |
 | `/analyze [dataset]` | End-to-end data analysis |
 | `/write [section]` | Draft paper sections + humanizer pass |
-| `/review [file/--flag]` | Quality reviews (routes by target: paper, code, peer) |
+| `/review [file/--flag]` | Quality reviews — paper, code, PDF; versioned input/output in `submission/` |
 | `/revise [report]` | R&R cycle: classify + route referee comments |
 | `/talk [mode] [format]` | Create, audit, or compile Beamer presentations |
 | `/submit [mode]` | Journal targeting → package → audit → final gate |

@@ -54,3 +54,6 @@ Thumbs.db
 # *.rds
 # output/**/*.rds
 docs/
+
+# Submission folder — PDFs and review outputs stay local
+submission/

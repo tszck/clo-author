@@ -44,9 +44,36 @@ Phase 5: Submission (depends on Phase 4, score >= 95)
 
 ## Workflow
 
-### Step 0: Enter Plan Mode
+### Step 0: Context Intake (always first)
 
-Before any work begins:
+Before plan mode, before any file creation, ask for context that cannot be retrieved from files.
+
+**Check what's already known:**
+- Read `CLAUDE.md` — if `[BRACKETED PLACEHOLDERS]` are still present, the project is unconfigured
+- Read `.claude/references/domain-profile.md` — if still template (contains `[e.g.,`), field is unknown
+- Read `quality_reports/research_spec_*.md` — if any exist, a research question may already be defined
+
+**Ask only what's missing.** Do not ask for things already filled in. Ask conversationally, one or two questions at a time — not a form dump.
+
+Questions to ask (only if unanswered by files):
+
+1. **Researcher identity** — "Who are you, and what's your institutional affiliation?" *(needed to fill CLAUDE.md and author fields in the paper)*
+2. **Field** — "What field or subfield is this project in?" *(calibrates journal targets, agent behavior, referee concerns)*
+3. **Research question** — "What's the core question you want to answer?" *(skip if a research spec already exists)*
+4. **Data access** — "What data do you have access to, or are you starting from scratch?" *(shapes the entire identification strategy and data discovery phase)*
+5. **Co-authors** — "Are you working alone or with co-authors? If co-authors, who?" *(affects author list in paper)*
+6. **Scripting language** — "Do you prefer R, Stata, Python, or Julia for the analysis?" *(Coder and data-engineer default to R if not specified)*
+7. **Timeline or target** — "Is there a conference deadline, job market, or submission target we're working toward?" *(affects pacing and scope decisions)*
+
+**After intake:**
+- Fill in `CLAUDE.md` placeholders if they were empty
+- Fill in `.claude/references/domain-profile.md` field and journal section if it was still template
+- Confirm with the user: "Here's what I've captured: [summary]. Ready to proceed?"
+
+Then enter plan mode.
+
+### Step 1: Enter Plan Mode
+
 1. **Enter plan mode** — use `EnterPlanMode`
 2. **Create the project folder structure** — `data/raw/`, `data/cleaned/`, `scripts/R/`, `paper/sections/`, `paper/figures/`, `paper/tables/`, etc.
 3. **Draft a high-level plan** — what phases are needed, estimated scope
@@ -54,7 +81,7 @@ Before any work begins:
 5. **Present to user** — wait for approval before proceeding
 6. **Exit plan mode** — only after approval
 
-### Step 1: Discovery Phase
+### Step 2: Discovery Phase
 
 1. **If `interactive` or no research spec exists:**
    Run `/discover interview` to produce:
@@ -72,7 +99,7 @@ Before any work begins:
 
 **Gate:** Research spec and literature review must exist before proceeding.
 
-### Step 2: Strategy Phase
+### Step 3: Strategy Phase
 
 4. **Run `/strategize`** to design the empirical strategy:
    - Strategist proposes identification strategy
@@ -80,7 +107,7 @@ Before any work begins:
 
 **Gate:** Strategy memo must pass strategist-critic review (score >= 80).
 
-### Step 3: Execution Phase
+### Step 4: Execution Phase
 
 5. **Run `/analyze`** to implement the strategy:
    - Data-engineer cleans data and creates figures
@@ -93,7 +120,7 @@ Before any work begins:
 
 **Gate:** Code must pass coder-critic review. Paper sections must exist.
 
-### Step 4: Peer Review Phase
+### Step 5: Peer Review Phase
 
 7. **Run `/review --all`** for comprehensive review:
    - strategist-critic + coder-critic + writer-critic + Verifier in parallel
@@ -106,7 +133,7 @@ Before any work begins:
 
 **Gate:** Aggregate score >= 80 (commit-ready). Score >= 90 for submission.
 
-### Step 5: Submission Phase (optional, user-triggered)
+### Step 6: Submission Phase (optional, user-triggered)
 
 9. **Run `/submit target`** for journal recommendations
 10. **Run `/submit package`** for replication package
