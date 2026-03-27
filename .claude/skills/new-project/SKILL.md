@@ -46,7 +46,7 @@ Phase 5: Submission (depends on Phase 4, score >= 95)
 
 ### Step 0: Context Intake (always first)
 
-Before plan mode, before any file creation, ask for context that cannot be retrieved from files.
+Before plan mode, before creating any new project folders or artifacts, ask for context that cannot be retrieved from files.
 
 **Check what's already known:**
 - Read `CLAUDE.md` — if `[BRACKETED PLACEHOLDERS]` are still present, the project is unconfigured
